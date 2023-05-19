@@ -1,8 +1,13 @@
 /*
-   token level fuzzing custom mutator for afl++
-   (c) by Marc Heuse <mh@mh-sec.de>
-   License: Apache 2.0
-*/
+ * tree guide mutator for afl++ by John Regehr
+ *
+ * token level fuzzing custom mutator for afl++
+ * (c) by Marc Heuse <mh@mh-sec.de>
+ * License: Apache 2.0
+ */
+
+// TODO:
+// - write an afl_custom_trim that does nothing
 
 extern "C" {
 
@@ -1077,6 +1082,15 @@ extern "C" my_mutator_t *afl_custom_init(afl_state *afl, unsigned int seed) {
 extern "C" void afl_custom_splice_optout(my_mutator_t *data) {
 
   (void)(data);
+
+}
+
+/*
+ * nop
+ */
+extern "C" size_t afl_custom_trim(my_mutator_t *data, uint8_t **out_buf) {
+  *out_buf = data->trim_buf;
+  return data->trim_size_current;
 
 }
 

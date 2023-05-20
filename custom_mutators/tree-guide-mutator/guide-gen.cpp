@@ -1085,14 +1085,15 @@ extern "C" void afl_custom_splice_optout(my_mutator_t *data) {
 
 }
 
+#if 0
 /*
- * nop
+ * nop -- we don't want any trimming to occur
  */
 extern "C" size_t afl_custom_trim(my_mutator_t *data, uint8_t **out_buf) {
   *out_buf = data->trim_buf;
   return data->trim_size_current;
-
 }
+#endif
 
 extern "C" void afl_custom_deinit(my_mutator_t *data) {
 

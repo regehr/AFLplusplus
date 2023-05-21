@@ -6,8 +6,9 @@
              Dominik Maier <mail@dmnk.co>
 */
 
-// You need to use -I/path/to/AFLplusplus/include -I.
+extern "C" {
 #include "afl-fuzz.h"
+}
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -19,11 +20,9 @@
 #define DATA_SIZE (100)
 
 static const char *commands[] = {
-
     "GET",
     "PUT",
     "DEL",
-
 };
 
 typedef struct my_mutator {
@@ -128,40 +127,6 @@ size_t afl_custom_fuzz(my_mutator_t *data, uint8_t *buf, size_t buf_size,
 
 }
 
-/**
- * A post-processing function to use right before AFL writes the test case to
- * disk in order to execute the target.
- *
- * (Optional) If this functionality is not needed, simply don't define this
- * function.
- *
- * @param[in] data pointer returned in afl_custom_init for this fuzz case
- * @param[in] buf Buffer containing the test case to be executed
- * @param[in] buf_size Size of the test case
- * @param[out] out_buf Pointer to the buffer containing the test case after
- *     processing. External library should allocate memory for out_buf.
- *     The buf pointer may be reused (up to the given buf_size);
- * @return Size of the output buffer after processing or the needed amount.
- *     A return of 0 indicates an error.
- */
-extern "C"
-size_t afl_custom_post_process(my_mutator_t *data, uint8_t *buf,
-                               size_t buf_size, uint8_t **out_buf) {
-
-  if (buf_size + 5 > MAX_FILE) { buf_size = MAX_FILE - 5; }
-
-  memcpy(data->post_process_buf + 5, buf, buf_size);
-  data->post_process_buf[0] = 'A';
-  data->post_process_buf[1] = 'F';
-  data->post_process_buf[2] = 'L';
-  data->post_process_buf[3] = '+';
-  data->post_process_buf[4] = '+';
-
-  *out_buf = data->post_process_buf;
-
-  return buf_size + 5;
-
-}
 
 /**
  * This method is called at the start of each trimming operation and receives
@@ -188,18 +153,7 @@ size_t afl_custom_post_process(my_mutator_t *data, uint8_t *buf,
 extern "C"
 int32_t afl_custom_init_trim(my_mutator_t *data, uint8_t *buf,
                              size_t buf_size) {
-
-  // We simply trim once
-  data->trimmming_steps = 1;
-
-  data->cur_step = 0;
-
-  memcpy(data->trim_buf, buf, buf_size);
-
-  data->trim_size_current = buf_size;
-
-  return data->trimmming_steps;
-
+  return 0;
 }
 
 /**
@@ -223,12 +177,8 @@ int32_t afl_custom_init_trim(my_mutator_t *data, uint8_t *buf,
  */
 extern "C"
 size_t afl_custom_trim(my_mutator_t *data, uint8_t **out_buf) {
-
   *out_buf = data->trim_buf;
-
-  // Remove the last byte of the trimming input
-  return data->trim_size_current - 1;
-
+  return data->trim_size_current;
 }
 
 /**
@@ -245,16 +195,7 @@ size_t afl_custom_trim(my_mutator_t *data, uint8_t **out_buf) {
  */
 extern "C"
 int32_t afl_custom_post_trim(my_mutator_t *data, int success) {
-
-  if (success) {
-
-    ++data->cur_step;
-    return data->cur_step;
-
-  }
-
-  return data->trimmming_steps;
-
+  return 0;
 }
 
 /**
@@ -276,16 +217,8 @@ int32_t afl_custom_post_trim(my_mutator_t *data, int success) {
 extern "C"
 size_t afl_custom_havoc_mutation(my_mutator_t *data, u8 *buf, size_t buf_size,
                                  u8 **out_buf, size_t max_size) {
-
-  *out_buf = buf;  // in-place mutation
-
-  if (buf_size <= sizeof(size_t)) { return buf_size; }
-
-  size_t victim = rand() % (buf_size - sizeof(size_t));
-  (*out_buf)[victim] += rand() % 10;
-
+  *out_buf = buf;
   return buf_size;
-
 }
 
 /**
@@ -299,48 +232,7 @@ size_t afl_custom_havoc_mutation(my_mutator_t *data, u8 *buf, size_t buf_size,
  */
 extern "C"
 uint8_t afl_custom_havoc_mutation_probability(my_mutator_t *data) {
-
-  return 5;  // 5 %
-
-}
-
-/**
- * Determine whether the fuzzer should fuzz the queue entry or not.
- *
- * (Optional)
- *
- * @param[in] data pointer returned in afl_custom_init for this fuzz case
- * @param filename File name of the test case in the queue entry
- * @return Return True(1) if the fuzzer will fuzz the queue entry, and
- *     False(0) otherwise.
- */
-extern "C"
-uint8_t afl_custom_queue_get(my_mutator_t *data, const uint8_t *filename) {
-
-  return 1;
-
-}
-
-/**
- * Allow for additional analysis (e.g. calling a different tool that does a
- * different kind of coverage and saves this for the custom mutator).
- *
- * (Optional)
- *
- * @param data pointer returned in afl_custom_init for this fuzz case
- * @param filename_new_queue File name of the new queue entry
- * @param filename_orig_queue File name of the original queue entry
- * @return if the file contents was modified return 1 (True), 0 (False)
- *         otherwise
- */
-extern "C"
-uint8_t afl_custom_queue_new_entry(my_mutator_t  *data,
-                                   const uint8_t *filename_new_queue,
-                                   const uint8_t *filename_orig_queue) {
-
-  /* Additional analysis on the original or new test case */
   return 0;
-
 }
 
 /**
@@ -350,11 +242,9 @@ uint8_t afl_custom_queue_new_entry(my_mutator_t  *data,
  */
 extern "C"
 void afl_custom_deinit(my_mutator_t *data) {
-
   free(data->post_process_buf);
   free(data->mutated_out);
   free(data->trim_buf);
   free(data);
-
 }
 

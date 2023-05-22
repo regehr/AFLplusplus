@@ -1,11 +1,3 @@
-/*
-  New Custom Mutator for AFL++
-  Written by Khaled Yakdan <yakdan@code-intelligence.de>
-             Andrea Fioraldi <andreafioraldi@gmail.com>
-             Shengtuo Hu <h1994st@gmail.com>
-             Dominik Maier <mail@dmnk.co>
-*/
-
 extern "C" {
 #include "afl-fuzz.h"
 }
@@ -18,7 +10,6 @@ extern "C" {
 #include <stdio.h>
 
 #include "guide.h"
-#include "gen_regex.h"
 
 struct my_mutator {
   afl_state_t *afl;
@@ -56,9 +47,80 @@ extern "C" my_mutator *afl_custom_init(afl_state_t *afl, unsigned int seed) {
   return data;
 }
 
+/////////////////////////////////////////////////////////////////////////////////////
+
 static void mutate_choices(std::vector<uint64_t> C) {
   C.at(rand() % C.size()) = rand();
 }
+
+static std::string gen(tree_guide::Chooser &C, long Depth);
+
+static std::string _char(tree_guide::Chooser &C) {
+  switch (C.choose(5)) {
+  case 0:
+    return "a";
+  case 1:
+    return "b";
+  case 2:
+    return "c";
+  case 3:
+    return "d";
+  case 4:
+    return ".";
+  default:
+    assert(false);
+  }
+}
+
+static long num(tree_guide::Chooser &C, long min, long max) {
+  return min + C.choose(max - min);
+}
+
+static std::string gen_helper(tree_guide::Chooser &C, long Depth) {
+  --Depth;
+  if (Depth == 0)
+    return _char(C);
+  switch (C.choose(11)) {
+  case 0:
+    return _char(C);
+  case 1:
+    return gen(C, Depth) + "|" + gen(C, Depth);
+  case 2:
+    return "(" + gen(C, Depth) + ")";
+  case 3:
+    return gen(C, Depth) + gen(C, Depth);
+  case 4:
+    return gen(C, Depth) + "?";
+  case 5:
+    return gen(C, Depth) + "*";
+  case 6:
+    return gen(C, Depth) + "+";
+  case 7:
+    return gen(C, Depth) + "{" + std::to_string(num(C, 1, 5)) + "}";
+  case 8:
+    return gen(C, Depth) + "{" + std::to_string(num(C, 1, 5)) + ",}";
+  case 9:
+    return gen(C, Depth) + "{," + std::to_string(num(C, 1, 5)) + "}";
+  case 10: {
+    auto N = num(C, 0, 5);
+    return gen(C, Depth) + "{" + std::to_string(N) + "," +
+           std::to_string(N + num(C, 0, 4)) + "}";
+  }
+  default:
+    assert(false);
+  }
+}
+
+static std::string gen(tree_guide::Chooser &C, long Depth) {
+  C.beginScope();
+  auto s = gen_helper(C, Depth);
+  C.endScope();
+  return s;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+
+const bool DEBUG = false;
 
 /**
  * Perform custom mutations on a given input
@@ -90,27 +152,38 @@ extern "C" size_t afl_custom_fuzz(my_mutator *data, uint8_t *buf,
     return 0;
   }
   auto C1 = FG->getChoices();
-  std::cerr << "parsed " << C1.size() << " choices\n";
+  if (DEBUG)
+    std::cerr << "parsed " << C1.size() << " choices\n";
   mutate_choices(C1);
-  std::cerr << "mutated\n";
+  if (DEBUG)
+    std::cerr << "mutated\n";
   FG->replaceChoices(C1);
 
   tree_guide::SaverGuide SG(FG);
   auto Ch = SG.makeChooser();
   auto Ch2 = static_cast<tree_guide::SaverChooser *>(Ch.get());
   assert(Ch2);
-  
+
+  const int RegexDepth = 6;
   auto S = gen(*Ch2, RegexDepth);
+  if (DEBUG)
+    std::cerr << "generated regex: '" << S << "'\n";
 
   // the mutated choices may contain extra elements, missing elements,
   // and out-of-range elements; this gets us a cleaned-up version
   auto C2 = Ch2->formatChoices();
+  if (DEBUG)
+    std::cerr << "formatted choices: '" << S << "'\n";
   
   // print the choice sequence into mutated_out
   strcpy((char *)data->mutated_out, C2.c_str());
   strcat((char *)data->mutated_out, S.c_str());
 
-  std::cerr << (char *)data->mutated_out;
+  if (DEBUG) {
+    std::cerr << "buffer:\n";
+    std::cerr << (char *)data->mutated_out;
+    std::cerr << "\n\n";
+  }
   
   *out_buf = data->mutated_out;
   // return mutated_size;

@@ -77,7 +77,7 @@ extern "C" size_t afl_custom_fuzz(my_mutator *data, uint8_t *buf,
                                   size_t   add_buf_size,  // add_buf can be NULL
                                   size_t   max_size) {
   auto G = new tree_guide::SaverGuide<tree_guide::FileGuide>();
-
+  std::stringstream S(buf);
 
   
   // Make sure that the packet size does not exceed the maximum size expected by

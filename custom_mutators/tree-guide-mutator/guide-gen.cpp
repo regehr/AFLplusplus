@@ -10,6 +10,8 @@ extern "C" {
 #include "afl-fuzz.h"
 }
 
+#include <sstream>
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -76,9 +78,11 @@ extern "C" size_t afl_custom_fuzz(my_mutator *data, uint8_t *buf,
                                   uint8_t *add_buf,
                                   size_t   add_buf_size,  // add_buf can be NULL
                                   size_t   max_size) {
-  auto G = new tree_guide::SaverGuide<tree_guide::FileGuide>();
-  std::stringstream S(buf);
-
+  std::string Str((char *)buf, buf_size);
+  std::stringstream SS(Str);
+  tree_guide::FileGuide FG;
+  auto res = FG.parseChoices(SS);
+  //tree_guide::SaverGuide<tree_guide::FileGuide> G();
   
   // Make sure that the packet size does not exceed the maximum size expected by
   // the fuzzer

@@ -19,8 +19,6 @@ extern "C" {
 
 #include "guide.h"
 
-#define DATA_SIZE (100)
-
 struct my_mutator {
   afl_state_t *afl;
   size_t       trim_size_current;
@@ -83,17 +81,16 @@ extern "C" size_t afl_custom_fuzz(my_mutator *data, uint8_t *buf,
   tree_guide::FileGuide FG;
   auto res = FG.parseChoices(SS);
   //tree_guide::SaverGuide<tree_guide::FileGuide> G();
+
+  // mutate parsed choices
+
+  // generate the regex
+
+  // print the choice sequence into mutated_out
   
-  // Make sure that the packet size does not exceed the maximum size expected by
-  // the fuzzer
-  size_t mutated_size = DATA_SIZE <= max_size ? DATA_SIZE : max_size;
-
+  // copy regex into mutated_out
+  
   memcpy(data->mutated_out, buf, buf_size);
-
-  // Randomly select a command string to add as a header to the packet
-  // memcpy(data->mutated_out, commands[rand() % 3], 3);
-
-  if (mutated_size > max_size) { mutated_size = max_size; }
 
   *out_buf = data->mutated_out;
   return mutated_size;

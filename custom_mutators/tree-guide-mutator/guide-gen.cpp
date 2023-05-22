@@ -80,7 +80,7 @@ extern "C" size_t afl_custom_fuzz(my_mutator *data, uint8_t *buf,
   std::stringstream SS(Str);
   tree_guide::FileGuide FG;
   auto res = FG.parseChoices(SS);
-  //tree_guide::SaverGuide<tree_guide::FileGuide> G();
+  tree_guide::SaverGuide G(FG);
 
   // mutate parsed choices
 
@@ -89,8 +89,6 @@ extern "C" size_t afl_custom_fuzz(my_mutator *data, uint8_t *buf,
   // print the choice sequence into mutated_out
   
   // copy regex into mutated_out
-  
-  memcpy(data->mutated_out, buf, buf_size);
 
   *out_buf = data->mutated_out;
   return mutated_size;

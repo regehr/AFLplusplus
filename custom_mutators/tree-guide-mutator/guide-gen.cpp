@@ -18,6 +18,7 @@ extern "C" {
 #include <stdio.h>
 
 #include "guide.h"
+#include "gen_regex.h"
 
 struct my_mutator {
   afl_state_t *afl;
@@ -55,6 +56,10 @@ extern "C" my_mutator *afl_custom_init(afl_state_t *afl, unsigned int seed) {
   return data;
 }
 
+static void mutate_choices(std::vector<uint64_t> C) {
+  C.at(rand() % C.size()) = rand();
+}
+
 /**
  * Perform custom mutations on a given input
  *
@@ -78,20 +83,38 @@ extern "C" size_t afl_custom_fuzz(my_mutator *data, uint8_t *buf,
                                   size_t   max_size) {
   std::string Str((char *)buf, buf_size);
   std::stringstream SS(Str);
-  tree_guide::FileGuide FG;
-  auto res = FG.parseChoices(SS);
-  tree_guide::SaverGuide G(FG);
+  auto FG = new tree_guide::FileGuide;
+  if (!FG->parseChoices(SS)) {
+    std::cerr << "couldn't parse choices\n";
+    // FIXME do something better 
+    return 0;
+  }
+  auto C1 = FG->getChoices();
+  std::cerr << "parsed " << C1.size() << " choices\n";
+  mutate_choices(C1);
+  std::cerr << "mutated\n";
+  FG->replaceChoices(C1);
 
-  // mutate parsed choices
-
-  // generate the regex
-
-  // print the choice sequence into mutated_out
+  tree_guide::SaverGuide SG(FG);
+  auto Ch = SG.makeChooser();
+  auto Ch2 = static_cast<tree_guide::SaverChooser *>(Ch.get());
+  assert(Ch2);
   
-  // copy regex into mutated_out
+  auto S = gen(*Ch2, RegexDepth);
 
+  // the mutated choices may contain extra elements, missing elements,
+  // and out-of-range elements; this gets us a cleaned-up version
+  auto C2 = Ch2->formatChoices();
+  
+  // print the choice sequence into mutated_out
+  strcpy((char *)data->mutated_out, C2.c_str());
+  strcat((char *)data->mutated_out, S.c_str());
+
+  std::cerr << (char *)data->mutated_out;
+  
   *out_buf = data->mutated_out;
-  return mutated_size;
+  // return mutated_size;
+  return strlen((char *)data->mutated_out);
 }
 
 extern "C" int32_t afl_custom_init_trim(my_mutator *data, uint8_t *buf,

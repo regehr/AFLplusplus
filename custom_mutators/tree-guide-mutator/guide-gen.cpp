@@ -30,7 +30,7 @@ struct my_mutator {
 extern "C" my_mutator *afl_custom_init(afl_state_t *afl, unsigned int seed) {
   srand(seed);
 
-  my_mutator_t *data = (my_mutator_t *)calloc(1, sizeof(my_mutator_t));
+  my_mutator *data = (my_mutator *)calloc(1, sizeof(my_mutator));
   if (!data) {
     perror("afl_custom_init alloc");
     return NULL;
@@ -76,6 +76,10 @@ extern "C" size_t afl_custom_fuzz(my_mutator *data, uint8_t *buf,
                                   uint8_t *add_buf,
                                   size_t   add_buf_size,  // add_buf can be NULL
                                   size_t   max_size) {
+  auto G = new tree_guide::SaverGuide<tree_guide::FileGuide>();
+
+
+  
   // Make sure that the packet size does not exceed the maximum size expected by
   // the fuzzer
   size_t mutated_size = DATA_SIZE <= max_size ? DATA_SIZE : max_size;
